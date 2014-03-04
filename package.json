@@ -1,0 +1,25 @@
+{
+  "name": "connect-static",
+  "version": "0.0.0",
+  "description": "static file server middleware for connect. loads files once at startup and saves gzipped versions in memory",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/andrewrk/connect-static.git"
+  },
+  "author": "Andrew Kelley <superjoe30@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/andrewrk/connect-static/issues"
+  },
+  "homepage": "https://github.com/andrewrk/connect-static",
+  "dependencies": {
+    "streamsink": "~1.0.0",
+    "pend": "~1.1.1",
+    "findit": "~1.1.1",
+    "mime": "~1.2.11"
+  }
+}
