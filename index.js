@@ -57,7 +57,7 @@ function createGzipStaticMiddleware(options, cb) {
       if (req.headers['accept-encoding'] == null) {
         sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
       } else {
-        resp.setHeader('content-encoding', 'gzip');
+        resp.setHeader('Content-Encoding', 'gzip');
         sink.createReadStream().pipe(resp);
       }
     }
