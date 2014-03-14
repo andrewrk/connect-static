@@ -18,7 +18,7 @@ var options = {
     ['/', '/index.html'],
   ],
   ignoreFile: function(fullPath) {
-    var basename = path.basename(file);
+    var basename = path.basename(fullPath);
     return /^\./.test(basename) || /~$/.test(basename);
   },
 };
