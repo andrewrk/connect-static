@@ -8,6 +8,7 @@ var findit = require('findit');
 var mime = require('mime');
 var url = require('url');
 var StreamSink = require('streamsink');
+var crypto = require('crypto');
 
 module.exports = createGzipStaticMiddleware;
 
@@ -20,7 +21,7 @@ function createGzipStaticMiddleware(options, cb) {
   var cache = {};
   var pend = new Pend();
   var walker = findit(dir);
-  walker.on('file', function(file) {
+  walker.on('file', function(file, stat) {
     if (ignoreFile(file)) return;
     var relName = '/' + path.relative(dir, file);
     var sink = new StreamSink();
@@ -33,13 +34,24 @@ function createGzipStaticMiddleware(options, cb) {
         throw err;
       }
     });
-    cache[relName] = {
+    var cacheObj;
+    cache[relName] = cacheObj = {
       sink: sink,
       mime: mime.lookup(relName),
+      mtime: stat.mtime,
+      hash: null,
     };
     pend.go(function(cb) {
       inStream.pipe(zlib.createGzip()).pipe(sink);
       sink.once('finish', cb);
+    });
+    pend.go(function(cb) {
+      var hashSink = new StreamSink();
+      inStream.pipe(crypto.createHash('sha1')).pipe(hashSink);
+      hashSink.once('finish', function() {
+        cacheObj.hash = hashSink.toString('base64');
+        cb();
+      });
     });
   });
   walker.on('end', function() {
@@ -54,8 +66,22 @@ function createGzipStaticMiddleware(options, cb) {
       var parsedUrl = url.parse(req.url);
       var c = cache[parsedUrl.pathname];
       if (!c) return next();
+      if (req.headers['if-none-match'] === c.hash) {
+        resp.statusCode = 304;
+        resp.end();
+        return;
+      }
+      var ifModifiedSince = new Date(req.headers['if-modified-since']);
+      if (!isNaN(ifModifiedSince) && c.mtime <= ifModifiedSince) {
+        resp.statusCode = 304;
+        resp.end();
+        return;
+      }
+
       var sink = c.sink;
       resp.setHeader('Content-Type', c.mime);
+      resp.setHeader('ETag', c.hash);
+      console.log(req.url, req.headers);
       if (req.headers['accept-encoding'] == null) {
         sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
       } else {

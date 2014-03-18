@@ -2,8 +2,16 @@
 
 When you create the middleware, it will immediately scan the requested
 directory, gzip all the files, and save the cache into memory, where it
-will forever remain. When a request hits the middleware it will never touch
+will forever remain. When a request hits the middleware it never touches
 the file system.
+
+## Supported HTTP Headers
+
+ * `ETag`
+ * `If-None-Match`
+ * `If-Modified-Since`
+ * `Accept-Encoding`
+ * `Content-Encoding`
 
 ## Usage
 
