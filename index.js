@@ -6,6 +6,7 @@ var path = require('path');
 var Pend = require('pend');
 var findit = require('findit');
 var mime = require('mime');
+var url = require('url');
 var StreamSink = require('streamsink');
 
 module.exports = createGzipStaticMiddleware;
@@ -50,7 +51,8 @@ function createGzipStaticMiddleware(options, cb) {
       cb(null, middleware);
     });
     function middleware(req, resp, next) {
-      var c = cache[req.url];
+      var parsedUrl = url.parse(req.url);
+      var c = cache[parsedUrl.pathname];
       if (!c) return next();
       var sink = c.sink;
       resp.setHeader('Content-Type', c.mime);
