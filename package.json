@@ -1,6 +1,6 @@
 {
   "name": "connect-static",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "static file server middleware for connect. loads files once at startup and saves gzipped versions in memory",
   "main": "index.js",
   "scripts": {
