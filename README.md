@@ -5,6 +5,9 @@ directory, gzip all the files, and save the cache into memory, where it
 will forever remain. When a request hits the middleware it never touches
 the file system.
 
+Are you looking for the middleware that used to ship with express and connect?
+That project is called [serve-static](https://github.com/expressjs/serve-static)
+
 ## Supported HTTP Headers
 
  * `ETag`
