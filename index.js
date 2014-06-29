@@ -7,7 +7,7 @@ var Pend = require('pend');
 var findit = require('findit');
 var mime = require('mime');
 var url = require('url');
-var StreamSink = require('streamsink');
+var BufferList = require('bl');
 var crypto = require('crypto');
 
 module.exports = createGzipStaticMiddleware;
@@ -24,7 +24,7 @@ function createGzipStaticMiddleware(options, cb) {
   walker.on('file', function(file, stat) {
     if (ignoreFile(file)) return;
     var relName = '/' + path.relative(dir, file);
-    var sink = new StreamSink();
+    var bl = new BufferList();
     var inStream = fs.createReadStream(file);
     inStream.on('error', function(err) {
       if (err.code === 'EISDIR') {
@@ -36,20 +36,20 @@ function createGzipStaticMiddleware(options, cb) {
     });
     var cacheObj;
     cache[relName] = cacheObj = {
-      sink: sink,
+      bl: bl,
       mime: mime.lookup(relName),
       mtime: stat.mtime,
       hash: null,
     };
     pend.go(function(cb) {
-      inStream.pipe(zlib.createGzip()).pipe(sink);
-      sink.once('finish', cb);
+      inStream.pipe(zlib.createGzip()).pipe(bl);
+      bl.once('finish', cb);
     });
     pend.go(function(cb) {
-      var hashSink = new StreamSink();
-      inStream.pipe(crypto.createHash('sha1')).pipe(hashSink);
-      hashSink.once('finish', function() {
-        cacheObj.hash = hashSink.toString('base64');
+      var hashBl = new BufferList();
+      inStream.pipe(crypto.createHash('sha1')).pipe(hashBl);
+      hashBl.once('finish', function() {
+        cacheObj.hash = hashBl.toString('base64');
         cb();
       });
     });
@@ -78,14 +78,14 @@ function createGzipStaticMiddleware(options, cb) {
         return;
       }
 
-      var sink = c.sink;
+      var bl = c.bl;
       resp.setHeader('Content-Type', c.mime);
       resp.setHeader('ETag', c.hash);
       if (req.headers['accept-encoding'] == null) {
-        sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
+        bl.duplicate().pipe(zlib.createGunzip()).pipe(resp);
       } else {
         resp.setHeader('Content-Encoding', 'gzip');
-        sink.createReadStream().pipe(resp);
+        bl.duplicate().pipe(resp);
       }
     }
   });
