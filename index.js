@@ -21,6 +21,10 @@ function createGzipStaticMiddleware(options, cb) {
   var cache = {};
   var pend = new Pend();
   var walker = findit(dir);
+  walker.on('error', function(err) {
+    walker.stop();
+    cb(err);
+  });
   walker.on('file', function(file, stat) {
     if (ignoreFile(file)) return;
     var relName = '/' + path.relative(dir, file);
