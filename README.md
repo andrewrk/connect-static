@@ -34,6 +34,7 @@ var options = {
   },
 };
 createStatic(options, function(err, middleware) {
+  if (err) throw err;
   app.use('/', middleware);
 });
 ```
