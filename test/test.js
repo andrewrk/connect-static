@@ -1,22 +1,22 @@
 var createStatic = require('..');
 var path = require('path');
 var assert = require('assert');
-var BufferList = require('bl');
+var StreamSink = require('streamsink');
 
 var dir = path.join(__dirname, "public");
 
 createStatic({dir: dir}, function(err, middleware) {
   if (err) throw err;
   middleware({url: '/unrelated'}, null, function() {
-    var bl = new BufferList();
-    bl.on('finish', function() {
-      assert.strictEqual(bl._bufs[0].toString(), "hi\n")
+    var sink = new StreamSink();
+    sink.on('finish', function() {
+      assert.strictEqual(sink.toString(), "hi\n")
       console.log("OK");
     });
-    bl.setHeader = function(name, val) {};
+    sink.setHeader = function(name, val) {};
     middleware({
       url: '/foo.txt',
       headers: {},
-    }, bl, assert.fail)
+    }, sink, assert.fail)
   });
 });
