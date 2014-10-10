@@ -32,6 +32,7 @@ var options = {
     var basename = path.basename(fullPath);
     return /^\./.test(basename) || /~$/.test(basename);
   },
+  followSymlinks: true,
 };
 createStatic(options, function(err, middleware) {
   if (err) throw err;

@@ -4,7 +4,7 @@ var stream = require('stream');
 var util = require('util');
 var path = require('path');
 var Pend = require('pend');
-var findit = require('findit');
+var findit = require('findit2');
 var mime = require('mime');
 var url = require('url');
 var StreamSink = require('streamsink');
@@ -17,27 +17,21 @@ function createGzipStaticMiddleware(options, cb) {
   var dir = options.dir || "public";
   var ignoreFile = options.ignoreFile || defaultIgnoreFile;
   var aliases = options.aliases || [['/', '/index.html']];
+  var followSymlinks = (options.followSymlinks == null) ? true : !!options.followSymlinks;
 
   var cache = {};
   var pend = new Pend();
-  var walker = findit(dir);
+  var walker = findit(dir, {followSymlinks: followSymlinks});
   walker.on('error', function(err) {
     walker.stop();
     cb(err);
   });
-  walker.on('file', function(file, stat) {
-    if (ignoreFile(file)) return;
-    var relName = '/' + path.relative(dir, file);
+  walker.on('file', function(file, stat, linkPath) {
+    var usePath = linkPath || file;
+    if (ignoreFile(usePath)) return;
+    var relName = '/' + path.relative(dir, usePath);
     var sink = new StreamSink();
     var inStream = fs.createReadStream(file);
-    inStream.on('error', function(err) {
-      if (err.code === 'EISDIR') {
-        delete cache[relName];
-        return;
-      } else {
-        throw err;
-      }
-    });
     var cacheObj;
     cache[relName] = cacheObj = {
       sink: sink,
@@ -45,14 +39,28 @@ function createGzipStaticMiddleware(options, cb) {
       mtime: stat.mtime,
       hash: null,
     };
-    pend.go(function(cb) {
-      inStream.pipe(zlib.createGzip()).pipe(sink);
-      sink.once('finish', cb);
+    var gzipPendCb, hashPendCb;
+    inStream.on('error', function(err) {
+      if (err.code === 'EISDIR') {
+        delete cache[relName];
+        gzipPendCb();
+        hashPendCb();
+      } else {
+        walker.stop();
+        gzipPendCb(err);
+        hashPendCb(err);
+      }
     });
     pend.go(function(cb) {
+      gzipPendCb = cb;
+      inStream.pipe(zlib.createGzip()).pipe(sink);
+      sink.on('finish', cb);
+    });
+    pend.go(function(cb) {
+      hashPendCb = cb;
       var hashSink = new StreamSink();
       inStream.pipe(crypto.createHash('sha1')).pipe(hashSink);
-      hashSink.once('finish', function() {
+      hashSink.on('finish', function() {
         cacheObj.hash = hashSink.toString('base64');
         cb();
       });
