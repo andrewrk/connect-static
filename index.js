@@ -92,6 +92,7 @@ function createGzipStaticMiddleware(options, cb) {
 
       var sink = c.sink;
       resp.setHeader('Content-Type', c.mime);
+      resp.setHeader('Cache-Control', 'max-age=0, must-revalidate');
       resp.setHeader('ETag', c.hash);
       if (req.headers['accept-encoding'] == null) {
         sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
