@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/andrewrk/connect-static",
   "dependencies": {
-    "findit2": "~2.2.0",
+    "findit2": "~2.2.3",
     "mime": "~1.2.11",
     "pend": "~1.1.3",
     "streamsink": "~1.2.0"
