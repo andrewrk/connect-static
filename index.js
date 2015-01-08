@@ -30,40 +30,58 @@ function createGzipStaticMiddleware(options, cb) {
     var usePath = linkPath || file;
     if (ignoreFile(usePath)) return;
     var relName = '/' + path.relative(dir, usePath);
-    var sink = new StreamSink();
+    var compressedSink = new StreamSink();
+    var uncompressedSink = new StreamSink();
+    var hashSink = new StreamSink();
     var inStream = fs.createReadStream(file);
     var cacheObj;
     cache[relName] = cacheObj = {
-      sink: sink,
+      sink: null,
       mime: mime.lookup(relName),
       mtime: stat.mtime,
       hash: null,
+      compressed: null,
     };
-    var gzipPendCb, hashPendCb;
+    var fileDone = pend.hold();
+    var thisPend = new Pend();
+    var gzipPendCb = thisPend.hold();
+    var hashPendCb = thisPend.hold();
+    var uncompressedPendCb = thisPend.hold();
     inStream.on('error', function(err) {
       if (err.code === 'EISDIR') {
         delete cache[relName];
         gzipPendCb();
+        uncompressedPendCb();
         hashPendCb();
       } else {
         walker.stop();
         gzipPendCb(err);
+        uncompressedPendCb(err);
         hashPendCb(err);
       }
     });
-    pend.go(function(cb) {
-      gzipPendCb = cb;
-      inStream.pipe(zlib.createGzip()).pipe(sink);
-      sink.on('finish', cb);
+    inStream.pipe(zlib.createGzip()).pipe(compressedSink);
+    compressedSink.on('finish', gzipPendCb);
+    inStream.pipe(uncompressedSink);
+    uncompressedSink.on('finish', uncompressedPendCb);
+    inStream.pipe(crypto.createHash('sha1')).pipe(hashSink);
+    hashSink.on('finish', function() {
+      cacheObj.hash = hashSink.toString('base64');
+      hashPendCb();
     });
-    pend.go(function(cb) {
-      hashPendCb = cb;
-      var hashSink = new StreamSink();
-      inStream.pipe(crypto.createHash('sha1')).pipe(hashSink);
-      hashSink.on('finish', function() {
-        cacheObj.hash = hashSink.toString('base64');
-        cb();
-      });
+    thisPend.wait(function(err) {
+      if (err) return fileDone(err);
+      var compressionRatio = compressedSink.length / uncompressedSink.length;
+      if (compressionRatio >= 0.95) {
+        // 95% of original size or worse. discard compressed sink
+        cacheObj.sink = uncompressedSink;
+        cacheObj.compressed = false;
+      } else {
+        // better than 95% of original size. discard uncompressed sink
+        cacheObj.sink = compressedSink;
+        cacheObj.compressed = true;
+      }
+      fileDone();
     });
   });
   walker.on('end', function() {
@@ -95,9 +113,15 @@ function createGzipStaticMiddleware(options, cb) {
       resp.setHeader('Cache-Control', 'max-age=0, must-revalidate');
       resp.setHeader('ETag', c.hash);
       if (req.headers['accept-encoding'] == null) {
-        sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
+        if (c.compressed) {
+          sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
+        } else {
+          sink.createReadStream().pipe(resp);
+        }
       } else {
-        resp.setHeader('Content-Encoding', 'gzip');
+        if (c.compressed) {
+          resp.setHeader('Content-Encoding', 'gzip');
+        }
         sink.createReadStream().pipe(resp);
       }
     }
