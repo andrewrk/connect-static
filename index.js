@@ -18,6 +18,7 @@ function createGzipStaticMiddleware(options, cb) {
   var ignoreFile = options.ignoreFile || defaultIgnoreFile;
   var aliases = options.aliases || [['/', '/index.html']];
   var followSymlinks = (options.followSymlinks == null) ? true : !!options.followSymlinks;
+  var cacheControlHeader = options.cacheControlHeader || 'max-age=0, must-revalidate';
 
   var cache = {};
   var pend = new Pend();
@@ -110,7 +111,7 @@ function createGzipStaticMiddleware(options, cb) {
 
       var sink = c.sink;
       resp.setHeader('Content-Type', c.mime);
-      resp.setHeader('Cache-Control', 'max-age=0, must-revalidate');
+      resp.setHeader('Cache-Control', cacheControlHeader);
       resp.setHeader('ETag', c.hash);
       if (req.headers['accept-encoding'] == null) {
         if (c.compressed) {

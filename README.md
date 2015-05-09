@@ -35,6 +35,7 @@ var options = {
     return /^\./.test(basename) || /~$/.test(basename);
   },
   followSymlinks: true,
+  cacheControlHeader: "max-age=0, must-revalidate",
 };
 createStatic(options, function(err, middleware) {
   if (err) throw err;
