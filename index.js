@@ -30,7 +30,7 @@ function createGzipStaticMiddleware(options, cb) {
   walker.on('file', function(file, stat, linkPath) {
     var usePath = linkPath || file;
     if (ignoreFile(usePath)) return;
-    var relName = '/' + path.relative(dir, usePath).replace('\\', '/');
+    var relName = '/' + path.relative(dir, usePath).replace(/\\/g, '/');
     var compressedSink = new StreamSink();
     var uncompressedSink = new StreamSink();
     var hashSink = new StreamSink();
