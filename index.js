@@ -97,7 +97,7 @@ function createGzipStaticMiddleware(options, cb) {
       var parsedUrl = url.parse(req.url);
       var c = cache[parsedUrl.pathname];
       if (!c) return next();
-      if (req.headers['if-none-match'] === c.hash) {
+      if (req.headers['if-none-match'] === '"' + c.hash + '"') {
         resp.statusCode = 304;
         resp.end();
         return;
@@ -112,7 +112,7 @@ function createGzipStaticMiddleware(options, cb) {
       var sink = c.sink;
       resp.setHeader('Content-Type', c.mime);
       resp.setHeader('Cache-Control', cacheControlHeader);
-      resp.setHeader('ETag', c.hash);
+      resp.setHeader('ETag', '"' + c.hash + '"');
       if (req.headers['accept-encoding'] == null) {
         if (c.compressed) {
           sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
