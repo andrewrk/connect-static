@@ -36,9 +36,11 @@ function createGzipStaticMiddleware(options, cb) {
     var hashSink = new StreamSink();
     var inStream = fs.createReadStream(file);
     var cacheObj;
+    var mimeType = mime.lookup(relName);
     cache[relName] = cacheObj = {
       sink: null,
-      mime: mime.lookup(relName),
+      mime: mimeType,
+      charset: mime.charsets.lookup(mimeType),
       mtime: stat.mtime,
       hash: null,
       compressed: null,
@@ -110,7 +112,7 @@ function createGzipStaticMiddleware(options, cb) {
       }
 
       var sink = c.sink;
-      resp.setHeader('Content-Type', c.mime);
+      resp.setHeader('Content-Type', c.mime + (c.charset ? '; charset=' + c.charset : ''));
       resp.setHeader('Cache-Control', cacheControlHeader);
       resp.setHeader('ETag', c.hash);
       if (req.headers['accept-encoding'] == null) {
