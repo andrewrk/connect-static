@@ -5,7 +5,7 @@ var util = require('util');
 var path = require('path');
 var Pend = require('pend');
 var findit = require('findit2');
-var mime = require('mime');
+var mime = require('mime-types');
 var url = require('url');
 var StreamSink = require('streamsink');
 var crypto = require('crypto');
@@ -117,14 +117,22 @@ function createGzipStaticMiddleware(options, cb) {
       resp.setHeader('ETag', c.hash);
       if (req.headers['accept-encoding'] == null) {
         if (c.compressed) {
+          // Stored as compressed, but will pipe through gunzip - this is the
+          //  only case where the client does not get Content-Length.
+          // (Instead, chunked transfer is used.)
           sink.createReadStream().pipe(zlib.createGunzip()).pipe(resp);
         } else {
+          // Uncompressed response for client that requests uncompressed:
+          // The length matches the expectations.
+          resp.setHeader('Content-Length', sink.length);
           sink.createReadStream().pipe(resp);
         }
       } else {
         if (c.compressed) {
           resp.setHeader('Content-Encoding', 'gzip');
         }
+        // This time we don't have to decompress, so the length is OK:
+        resp.setHeader('Content-Length', sink.length);
         sink.createReadStream().pipe(resp);
       }
     }
